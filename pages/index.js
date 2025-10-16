@@ -1,14 +1,14 @@
 // app/page.js
+import { useEffect, useState } from "react";
+
 export default function Home() {
-  return (
-    <iframe
-      src="/index.html"   // public folder ka path
-      style={{
-        width: "100%",
-        height: "100vh",
-        border: 0,
-        display: "block",
-      }}
-    />
-  );
+  const [htmlContent, setHtmlContent] = useState("");
+
+  useEffect(() => {
+    fetch("/index.html")
+      .then((res) => res.text())
+      .then((data) => setHtmlContent(data));
+  }, []);
+
+  return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
 }
