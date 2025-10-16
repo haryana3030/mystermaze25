@@ -379,7 +379,6 @@ sidebarToggle.addEventListener('click', () => {
 });
 
 // ------------------------- INIT GAME FUNCTION -------------------------
-// ------------------------- INIT GAME FUNCTION (WITH CACHING) -------------------------
 async function initGame() {
     const rollNumber = getUserId();
     if (!rollNumber) {
@@ -394,24 +393,8 @@ async function initGame() {
     progressMap.classList.remove('hidden');
 
     try {
-        let riddlesData;
-        const cachedRiddles = localStorage.getItem('allRiddlesCache');
-
-        // Check if riddles are available in cache
-        if (cachedRiddles) {
-            riddlesData = JSON.parse(cachedRiddles);
-            console.log("Riddles loaded from cache.");
-        } else {
-            // If not in cache, fetch from the backend
-            const riddlesRes = await fetch(`${backendUrl}?path=getQuestions`);
-            riddlesData = await riddlesRes.json();
-            
-            // Save riddles to cache for future use
-            if (riddlesData.success && riddlesData.questions) {
-                localStorage.setItem('allRiddlesCache', JSON.stringify(riddlesData));
-                console.log("Riddles fetched and cached.");
-            }
-        }
+        const riddlesRes = await fetch(`${backendUrl}?path=getQuestions`);
+        const riddlesData = await riddlesRes.json();
         
         if (riddlesData.success && riddlesData.questions && riddlesData.questions.length > 0) {
             allRiddles = riddlesData.questions;
@@ -432,7 +415,21 @@ async function initGame() {
                 saveLocalProgress();
             }
 
-            // ... (rest of the function is the same)
+            progressMap.innerHTML = '';
+            teamRiddles.forEach((riddle, index) => {
+                const span = document.createElement('i');
+                span.classList.add('fas', 'fa-circle', 'progress-icon', 'opacity-70');
+                if (userProgress.solvedRiddles[riddle.qid]) {
+                    span.classList.remove('opacity-70');
+                    span.classList.add('fa-check-circle', 'completed');
+                    span.style.color = '#00FF00';
+                }
+                progressMap.appendChild(span);
+            });
+            
+            // ⭐ Change: Get initial score from the backend
+            await updateScoreDisplay();
+            loadRiddle();
         } else {
             console.error("Failed to fetch riddles:", riddlesData.message);
             riddleText.textContent = "Error loading riddles. Please try again later.";
@@ -442,6 +439,7 @@ async function initGame() {
         riddleText.textContent = "Error connecting to the magical network. Please check your connection.";
     }
 }
+
 // ------------------------- GET RIDDLE BUTTON LOGIC -------------------------
 getRiddleBtn.addEventListener('click', initGame);
 
