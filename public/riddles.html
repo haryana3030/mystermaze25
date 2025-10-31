@@ -405,9 +405,15 @@ async function initGame() {
                 teamRiddles = userProgress.riddleOrder;
                 currentRiddleIndex = userProgress.currentRiddleIndex;
             } else {
-                teamRiddles = shuffleArray([...allRiddles], team.id);
+                // 1. Shuffle all riddles from the backend using the user's ID as seed
+                let shuffledRiddles = shuffleArray([...allRiddles], team.id);
+                
+                // 2. ⭐ MODIFICATION: Select only the first 10 riddles for the quest
+                const QUEST_SIZE = 10;
+                teamRiddles = shuffledRiddles.slice(0, QUEST_SIZE);
+                
                 userProgress = {
-                    riddleOrder: teamRiddles,
+                    riddleOrder: teamRiddles, // Save the fixed 10 riddles
                     solvedRiddles: {},
                     partialRiddles: {},
                     currentRiddleIndex: 0
@@ -416,7 +422,8 @@ async function initGame() {
             }
 
             progressMap.innerHTML = '';
-            teamRiddles.forEach((riddle, index) => {
+            // Ensure progress map reflects the size of the 10-riddle quest
+            teamRiddles.forEach((riddle, index) => { 
                 const span = document.createElement('i');
                 span.classList.add('fas', 'fa-circle', 'progress-icon', 'opacity-70');
                 if (userProgress.solvedRiddles[riddle.qid]) {
@@ -427,7 +434,6 @@ async function initGame() {
                 progressMap.appendChild(span);
             });
             
-            // ⭐ Change: Get initial score from the backend
             await updateScoreDisplay();
             loadRiddle();
         } else {
@@ -464,7 +470,7 @@ function startTimer() {
 function loadRiddle() {
     saveLocalProgress();
 
-    if (currentRiddleIndex >= teamRiddles.length) {
+    if (currentRiddleIndex >= teamRiddles.length) { // Checks against the 10-riddle limit
         showFinalLeaderboard();
         return;
     }
@@ -540,9 +546,9 @@ submitBtn.addEventListener('click', async () => {
             userProgress.currentRiddleIndex = currentRiddleIndex + 1;
             saveLocalProgress();
 
-            // ⭐ Key change: Send the riddle ID and points, not the total score
+            // Key change: Send the riddle ID and points, not the total score
             await saveRiddlePointsToBackend(currentRiddle.qid, points);
-            // ⭐ Update the display after the backend has been notified
+            // Update the display after the backend has been notified
             await updateScoreDisplay();
 
             const randomPraise = praises[Math.floor(Math.random() * praises.length)];
@@ -597,7 +603,7 @@ submitBtn.addEventListener('click', async () => {
     }
 });
 
-// ⭐ NEW FUNCTION: Send riddle-specific points to the backend
+// NEW FUNCTION: Send riddle-specific points to the backend
 async function saveRiddlePointsToBackend(qid, points) {
     try {
         await fetch(`${backendUrl}?path=addPoints`, {
@@ -677,12 +683,14 @@ function showFinalLeaderboard() {
     backText.textContent = `Final Points: ${team.score}`;
     cardInner.style.transform = 'rotateY(180deg)';
     
-    // ⭐ No need to send the final score, it's already being saved per riddle.
-    
     teamStats.classList.remove('hidden');
     statsList.innerHTML = Object.keys(userProgress.solvedRiddles).map(qid => {
         const riddle = userProgress.solvedRiddles[qid];
-        return `<li class="p-1 bg-gray-900 rounded border border-gray-700">Riddle ${qid}: ${riddle.score} pts | ${riddle.attempts} attempts</li>`;
+        // Find the original question text for display (optional, based on your full data structure)
+        const originalRiddle = allRiddles.find(r => r.qid === qid); 
+        const riddleName = originalRiddle ? `Riddle ${qid}` : `Riddle ${qid}`;
+
+        return `<li class="p-1 bg-gray-900 rounded border border-gray-700">${riddleName}: ${riddle.score} pts | ${riddle.attempts} attempts</li>`;
     }).join('');
 
     setTimeout(() => {
@@ -725,7 +733,14 @@ function updateParallax() {
 requestAnimationFrame(updateParallax);
 
 // ------------------------- INIT -------------------------
-window.onload = initGame;
+// Check for user ID and initialize on load if found, otherwise the button starts the process.
+if (getUserId()) {
+    window.onload = initGame;
+} else {
+    // Show the button if not logged in, which will then redirect to login.
+    getRiddleBtn.classList.remove('hidden');
+}
+
 </script>
 </body>
 </html>
