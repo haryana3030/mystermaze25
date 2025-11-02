@@ -11,7 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
 <style>
-/* CSS Styles */
+/* --- ORIGINAL CSS STYLES --- */
   :root {
     --gold: #d4af37;
     --deep-blue: #0b0f1a;
@@ -364,6 +364,7 @@
     .footer { font-size: clamp(0.5rem, 2vw, 0.625rem); }
     body h1 { font-size: clamp(0.875rem, 5.5vw, 1.5rem); margin-top: 20vh; }
   }
+/* --- END ORIGINAL CSS STYLES --- */
 </style>
 </head>
 <body>
@@ -375,7 +376,7 @@
 </div>
 
 <div class="login-card" id="loginCard">
-  <h1>Mystery Mazes Login</h1>
+  <h1>Mystery Maze Login</h1>
   <h2>“Unlock the secrets hidden beyond Hogwarts walls...”</h2>
   <form id="loginForm">
     <label for="userid">Team Leader Roll No</label>
@@ -397,7 +398,7 @@
 // Web App URL for your Google Apps Script deployment (Authentication is here)
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1XADJH1lBrTb9p_Mb7Uxs_yghk25aoJlB1rkr2zW8TIW3U0l3_v8SUG9SysI6lROpIQ/exec";
 
-// ------------------------- 🔥 FIREBASE CONFIGURATION 🔥 -------------------------
+// ------------------------- 🔥 FIREBASE CONFIGURATION (NEW PROJECT) 🔥 -------------------------
 // NOTE: These details must match the config in your 'riddles.html' file
 const firebaseConfig = {
     apiKey: "AIzaSyB7-MsCUkAfyaYxPBYHFiiPr3mpXuHZ7MM", 
@@ -433,7 +434,6 @@ async function handleLogin(e) {
     try {
         
         // --- STEP 1: AUTHENTICATION CHECK (Google Sheets/GAS) ---
-        // This confirms the ID and Phone number are valid.
         const gasUrl = `${WEB_APP_URL}?path=login&roll=${roll}&phone=${phone}`;
         const gasResponse = await fetch(gasUrl, { method: "GET" });
         const gasData = await gasResponse.json();
