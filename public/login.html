@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
 <style>
+/* CSS Styles (No changes here) */
   :root {
     --gold: #d4af37;
     --deep-blue: #0b0f1a;
@@ -427,16 +428,33 @@ async function handleLogin(e) {
 
     const loginBtn = document.getElementById('loginBtn');
     loginBtn.disabled = true;
-    loginBtn.textContent = "Checking Status...";
-    
-    // --- STEP 1: Firebase Status Check (Check for active session) ---
-    const statusRef = db.collection("onlineStatus").doc(roll);
+    loginBtn.textContent = "Checking Server...";
     
     try {
+        // --- STEP 1: AUTHENTICATION CHECK (Google Sheets/GAS) ---
+        loginBtn.textContent = "Authenticating...";
+        
+        // This is your original GAS login request
+        const gasUrl = `${WEB_APP_URL}?path=login&roll=${roll}&phone=${phone}`;
+        const gasResponse = await fetch(gasUrl, { method: "GET" });
+        const gasData = await gasResponse.json();
+
+        if (!gasData.success) {
+            // ❌ Authentication failed
+            alert("❌ Authentication Failed: " + gasData.message);
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Enter the Maze";
+            return;
+        }
+
+        // --- STEP 2: SINGLE SESSION LOCK CHECK (Firebase) ---
+        loginBtn.textContent = "Checking Session Lock...";
+        
+        const statusRef = db.collection("onlineStatus").doc(roll);
         const statusSnap = await statusRef.get();
         
         if (statusSnap.exists && statusSnap.data().isOnline) {
-            // 🚨 LOGIN BLOCKED: User is already active on another device
+            // 🚨 LOGIN BLOCKED: User is already active
             alert("⚠️ This ID is currently active on another device (or previous session was not closed properly). Please log out from the other device or wait a moment before trying again.");
             
             // Re-enable button and return
@@ -445,39 +463,22 @@ async function handleLogin(e) {
             return;
         }
 
-        // --- STEP 2: GAS Backend Authentication Check ---
-        loginBtn.textContent = "Authenticating...";
+        // --- STEP 3: SUCCESS & SET ONLINE STATUS ---
         
-        // This is your original GAS login request
-        const gasUrl = `${WEB_APP_URL}?path=login&roll=${roll}&phone=${phone}`;
-        const gasResponse = await fetch(gasUrl, { method: "GET" });
-        const gasData = await gasResponse.json();
+        // ✅ Set online status in Firebase to lock the session
+        await statusRef.set({ 
+            isOnline: true, 
+            loginTime: firebase.firestore.FieldValue.serverTimestamp(),
+            device: navigator.userAgent.substring(0, 150) // Save device info
+        });
 
-        if (gasData.success) {
-            
-            // --- STEP 3: Set Online Status and Proceed ---
-            
-            // ✅ Set online status in Firebase to lock the session
-            await statusRef.set({ 
-                isOnline: true, 
-                loginTime: firebase.firestore.FieldValue.serverTimestamp(),
-                device: navigator.userAgent.substring(0, 150) // Save device info
-            });
-
-            alert("✅ Welcome to the Maze! Session Activated.");
-            localStorage.setItem("roll", roll);
-            window.location.href = "riddles.html"; // Redirect to game page
-            
-        } else {
-            // ❌ Authentication failed
-            alert("❌ Authentication Failed: " + gasData.message);
-            loginBtn.disabled = false;
-            loginBtn.textContent = "Enter the Maze";
-        }
+        alert("✅ Welcome to the Maze! Session Activated.");
+        localStorage.setItem("roll", roll);
+        window.location.href = "riddles.html"; // Redirect to game page
         
     } catch (err) {
         console.error("Error during login or Firebase check:", err);
-        alert("⚠️ Fatal Error: Unable to connect to Firebase or Server. Please check your network!");
+        alert("⚠️ Fatal Error: Unable to connect to Server/Firebase. Please check your network!");
         loginBtn.disabled = false;
         loginBtn.textContent = "Enter the Maze";
     }
