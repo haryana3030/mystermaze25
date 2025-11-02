@@ -454,7 +454,7 @@ async function handleLogin(e) {
         
         if (statusSnap.exists && statusSnap.data().isOnline) {
             // 🚨 LOGIN BLOCKED: User is already active
-            alert("⚠️ This ID is currently active on another device. Please log out from the other device or wait a moment before trying again.");
+            alert("⚠️ This ID is currently active on another device. Please log out from the other device.");
             
             // Re-enable button and return
             loginBtn.disabled = false;
@@ -471,14 +471,14 @@ async function handleLogin(e) {
             device: navigator.userAgent.substring(0, 150) // Save device info
         });
 
-        alert("✅ Welcome to the Maze! Session Activated.");
+        alert("✅ Welcome to the Maze!!!");
         localStorage.setItem("roll", roll);
         window.location.href = "riddles.html"; // Redirect to game page
          
     } catch (err) {
         console.error("Error during server communication:", err);
         // This error handles network issues that prevent contact with GAS OR Firebase
-        alert("⚠️ Fatal Error: Unable to communicate with the server. Please check your network and security rules!");
+        alert("⚠️ Fatal Error: Unable to communicate with the server. Please contact admin");
         loginBtn.disabled = false;
         loginBtn.textContent = "Enter the Maze";
     }
