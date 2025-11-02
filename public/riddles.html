@@ -301,7 +301,7 @@ const backendUrl = "/api/gasProxy";
 
 // ------------------------- 🔥 FIREBASE CONFIGURATION (For Global Progress Sync) 🔥 -------------------------
 const firebaseConfig = {
-    // AAPKI API KEY AUR BAAKI CONFIGURATION AB YAHAN CORRECT HAI
+    // API KEY AUR CONFIGURATION AB YAHAN CORRECT HAI
     apiKey: "AIzaSyBFwnzQG7zpNs7AgJHs8EaCnHIQXXlEq54", 
     authDomain: "data-5ccfc.firebaseapp.com",
     projectId: "data-5ccfc",
@@ -313,7 +313,7 @@ const firebaseConfig = {
 
 // Initialize Firebase and Firestore
 const app = firebase.initializeApp(firebaseConfig);
-const db = app.firestore(); // 'db' variable ab Firestore database ko point karega
+const db = app.firestore();
 // ------------------------- END FIREBASE CONFIGURATION -------------------------
 
 let team = {
@@ -334,6 +334,7 @@ let timerInterval = null;
 let muted = false;
 let mouseX = 0, mouseY = 0;
 let targetX = 0, targetY = 0;
+let progressListener = null; // To hold the listener subscription
 
 // ------------------------- ELEMENTS -------------------------
 const riddleText = document.getElementById('riddle-text');
@@ -418,14 +419,54 @@ async function loadGlobalProgress() {
     }
 }
 
-// NEW: Progress ko Firebase par save karega
+// UPDATED: Progress ko Firebase par Transaction ke saath save karega
 async function saveGlobalProgress() {
+    if (!team.id) return;
+    const progressRef = db.collection("progress").doc(team.id);
+
     try {
-        await db.collection("progress").doc(team.id).set(userProgress);
-        console.log("Progress saved to Firebase.");
+        // Transaction ensures data integrity across multiple devices
+        await db.runTransaction(async (transaction) => {
+            // Read is not strictly needed here since we are overwriting,
+            // but the transaction mechanism handles concurrency for the write.
+            // const doc = await transaction.get(progressRef); 
+            transaction.set(progressRef, userProgress);
+        });
+        console.log("Progress saved via transaction.");
+
     } catch (error) {
-        console.error("Failed to save progress to Firebase:", error);
+        console.error("Failed to save progress via transaction:", error);
+        // Important: User ko alert karein agar sync fail ho
+        alert("Progress synchronization failed! Please check your network and refresh.");
     }
+}
+
+// NEW: Real-Time Listener jo doosre device ke changes ko turant sync karega
+function startProgressListener() {
+    if (!team.id || progressListener) return; // Prevent multiple listeners
+
+    progressListener = db.collection("progress").doc(team.id)
+        .onSnapshot((doc) => {
+            if (doc.exists) {
+                const latestProgress = doc.data();
+                
+                // Agar server ka index hamare local index se aage hai, toh game state update karo
+                if (latestProgress.currentRiddleIndex > currentRiddleIndex) {
+                    console.log("Progress updated by another device. Syncing state.");
+                    userProgress = latestProgress;
+                    teamRiddles = userProgress.riddleOrder;
+                    currentRiddleIndex = userProgress.currentRiddleIndex;
+                    
+                    // Naya riddle load karo (jo abhi doosre device ne solve kiya hai)
+                    loadRiddle(); 
+                    
+                    // Progress map update karo
+                    updateProgressMapFromState(); 
+                }
+            }
+        }, (error) => {
+            console.error("Firebase Listener error:", error);
+        });
 }
 
 // ------------------------- INIT GAME FUNCTION -------------------------
@@ -449,7 +490,6 @@ async function initGame() {
         if (riddlesData.success && riddlesData.questions && riddlesData.questions.length > 0) {
             allRiddles = riddlesData.questions;
             
-            // 🔄 Load progress from Firebase
             const globalProgress = await loadGlobalProgress(); 
             
             if (globalProgress) {
@@ -457,9 +497,7 @@ async function initGame() {
                 teamRiddles = userProgress.riddleOrder;
                 currentRiddleIndex = userProgress.currentRiddleIndex;
             } else {
-                // Agar global progress nahi mila, toh naya progress generate karo aur save karo
                 let shuffledRiddles = shuffleArray([...allRiddles], team.id);
-                
                 const QUEST_SIZE = 10;
                 teamRiddles = shuffledRiddles.slice(0, QUEST_SIZE);
                 
@@ -469,23 +507,19 @@ async function initGame() {
                     partialRiddles: {},
                     currentRiddleIndex: 0
                 };
-                await saveGlobalProgress(); // Naya progress globally Firebase par save karo
+                await saveGlobalProgress();
             }
 
             progressMap.innerHTML = '';
-            // Ensure progress map reflects the size of the 10-riddle quest
-            teamRiddles.forEach((riddle, index) => { 
+            teamRiddles.forEach(() => { 
                 const span = document.createElement('i');
                 span.classList.add('fas', 'fa-circle', 'progress-icon', 'opacity-70');
-                if (userProgress.solvedRiddles[riddle.qid]) {
-                    span.classList.remove('opacity-70');
-                    span.classList.add('fa-check-circle', 'completed');
-                    span.style.color = '#00FF00';
-                }
                 progressMap.appendChild(span);
             });
             
             await updateScoreDisplay();
+            startProgressListener(); // ⚡️ Listener shuru hua
+            updateProgressMapFromState(); // Map state se update hua
             loadRiddle();
         } else {
             console.error("Failed to fetch riddles:", riddlesData.message);
@@ -519,20 +553,20 @@ function startTimer() {
 
 // ------------------------- LOAD RIDDLE -------------------------
 function loadRiddle() {
-    saveGlobalProgress(); // Progress ko Firebase par update karo
-
-    if (currentRiddleIndex >= teamRiddles.length) { // Checks against the 10-riddle limit
+    if (currentRiddleIndex >= teamRiddles.length) { 
         showFinalLeaderboard();
         return;
     }
     const currentRiddle = teamRiddles[currentRiddleIndex];
 
-    if (userProgress.solvedRiddles[currentRiddle.qid]) {
+    // Real-time check: Agar doosre device ne is riddle ko solve kar diya hai
+    if (userProgress.solvedRiddles[currentRiddle.qid]) { 
         currentRiddleIndex++;
-        loadRiddle();
+        loadRiddle(); // Next riddle load karo
         return;
     }
     
+    // Attempt count load karna
     if (userProgress.partialRiddles && userProgress.partialRiddles[currentRiddle.qid]) {
         attemptsUsed = userProgress.partialRiddles[currentRiddle.qid].attemptsUsed;
         attemptsLeft = maxAttempts - attemptsUsed;
@@ -560,14 +594,30 @@ function calculatePoints(attempt) {
     return 0;
 }
 
-// ------------------------- UPDATE PROGRESS -------------------------
-function updateProgress(correct) {
+// ------------------------- UPDATE PROGRESS MAP (State se) -------------------------
+function updateProgressMapFromState() {
     const progressIcons = progressMap.querySelectorAll('.progress-icon');
-    if (progressIcons[currentRiddleIndex]) {
-        progressIcons[currentRiddleIndex].classList.remove('fa-circle', 'opacity-70');
-        progressIcons[currentRiddleIndex].classList.add(correct ? 'fa-check-circle' : 'fa-times-circle', 'completed');
-        progressIcons[currentRiddleIndex].style.color = correct ? '#00FF00' : '#FF0000';
-    }
+    teamRiddles.forEach((riddle, index) => {
+        if (progressIcons[index]) {
+            const icon = progressIcons[index];
+            const qid = riddle.qid;
+            const isSolved = userProgress.solvedRiddles[qid];
+            const isFailed = userProgress.partialRiddles[qid] && (maxAttempts - userProgress.partialRiddles[qid].attemptsUsed <= 0);
+
+            icon.classList.remove('fa-circle', 'opacity-70', 'fa-times-circle', 'fa-check-circle');
+            
+            if (isSolved) {
+                icon.classList.add('fa-check-circle', 'completed');
+                icon.style.color = '#00FF00';
+            } else if (isFailed) {
+                icon.classList.add('fa-times-circle', 'completed');
+                icon.style.color = '#FF0000';
+            } else {
+                icon.classList.add('fa-circle', 'opacity-70');
+                icon.style.color = '#FFD700'; // Default color
+            }
+        }
+    });
 }
 
 // ------------------------- SUBMIT ANSWER -------------------------
@@ -581,8 +631,16 @@ submitBtn.addEventListener('click', async () => {
     let correct = false;
 
     const currentRiddle = teamRiddles[currentRiddleIndex];
+    
+    // Final check for double submission before hitting backend
+    if (userProgress.solvedRiddles[currentRiddle.qid]) {
+         console.warn("Riddle already solved by another device. Aborting submission.");
+         submitBtn.disabled = false;
+         loadRiddle(); // Sync state
+         return;
+    }
+
     try {
-        // NOTE: Yeh checkAnswer call abhi bhi aapke GAS proxy par jaa rahi hai
         const res = await fetch(`${backendUrl}?path=checkAnswer&qid=${currentRiddle.qid}&answer=${userAnswer}`);
         const data = await res.json();
         
@@ -596,9 +654,10 @@ submitBtn.addEventListener('click', async () => {
             }
             userProgress.solvedRiddles[currentRiddle.qid] = { attempts: attemptsUsed, score: points };
             userProgress.currentRiddleIndex = currentRiddleIndex + 1;
-            await saveGlobalProgress(); // Progress Firebase par save hua!
+            
+            // 💥 Key Action: Progress Firebase par save hua, jo doosre devices ko turant inform karega
+            await saveGlobalProgress(); 
 
-            // Points ko leaderboard aur score update ke liye GAS backend par bhejte hain
             await saveRiddlePointsToBackend(currentRiddle.qid, points);
             await updateScoreDisplay();
 
@@ -607,7 +666,7 @@ submitBtn.addEventListener('click', async () => {
             if (!muted) correctSound.play();
             cardInner.style.transform = 'rotateY(180deg)';
             setTimeout(() => {
-                updateProgress(correct);
+                updateProgressMapFromState();
                 cardInner.style.transform = 'rotateY(0deg)';
                 currentRiddleIndex++;
                 loadRiddle();
@@ -632,7 +691,7 @@ submitBtn.addEventListener('click', async () => {
                 clearInterval(timerInterval);
                 backText.textContent = `Out of attempts!`;
                 cardInner.style.transform = 'rotateY(180deg)';
-                updateProgress(correct);
+                updateProgressMapFromState();
                 
                 if (userProgress.partialRiddles) {
                     delete userProgress.partialRiddles[currentRiddle.qid];
