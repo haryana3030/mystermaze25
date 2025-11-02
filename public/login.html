@@ -6,359 +6,363 @@
 <title>Hogwarts Mystery Maze Login</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:wght@400;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
 <style>
-  :root {
-    --gold: #d4af37;
-    --deep-blue: #0b0f1a;
-    --light-gold: #ffdf70;
-    --golden-glow: rgba(255, 215, 100, 0.7);
-  }
+  :root {
+    --gold: #d4af37;
+    --deep-blue: #0b0f1a;
+    --light-gold: #ffdf70;
+    --golden-glow: rgba(255, 215, 100, 0.7);
+  }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: radial-gradient(circle at 20% 20%, #11182a, #030610 90%);
-    color: #fff;
-    font-family: 'EB Garamond', serif;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    perspective: 1200px;
-    /* overflow: hidden; */
-    position: relative;
-    touch-action: manipulation;
-  }
+  body {
+    background: radial-gradient(circle at 20% 20%, #11182a, #030610 90%);
+    color: #fff;
+    font-family: 'EB Garamond', serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1200px;
+    /* overflow: hidden; */
+    position: relative;
+    touch-action: manipulation;
+  }
 
-  body::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: url('hogwarts.png') center/cover no-repeat;
-    opacity: 0.4;
-    z-index: -3;
-    filter: blur(1px);
-  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: url('hogwarts.png') center/cover no-repeat;
+    opacity: 0.4;
+    z-index: -3;
+    filter: blur(1px);
+  }
 
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: linear-gradient(45deg, transparent, var(--golden-glow), transparent);
-    animation: goldenWave 15s infinite ease-in-out;
-    z-index: -2;
-    opacity: 0.4;
-  }
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(45deg, transparent, var(--golden-glow), transparent);
+    animation: goldenWave 15s infinite ease-in-out;
+    z-index: -2;
+    opacity: 0.4;
+  }
 
-  @keyframes goldenWave {
-    0%, 100% { transform: translateX(-100%); }
-    50% { transform: translateX(100%); }
-  }
+  @keyframes goldenWave {
+    0%, 100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+  }
 
-  .stars {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: transparent;
-    z-index: -2;
-    transform-style: preserve-3d;
-  }
+  .stars {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    z-index: -2;
+    transform-style: preserve-3d;
+  }
 
-  .star {
-    position: absolute;
-    background: linear-gradient(45deg, #fff, var(--light-gold));
-    border-radius: 50%;
-    width: 3px; height: 3px;
-    animation: twinkle 2.5s infinite ease-in-out;
-    transform: translateZ(0);
-  }
+  .star {
+    position: absolute;
+    background: linear-gradient(45deg, #fff, var(--light-gold));
+    border-radius: 50%;
+    width: 3px; height: 3px;
+    animation: twinkle 2.5s infinite ease-in-out;
+    transform: translateZ(0);
+  }
 
-  @keyframes twinkle {
-    0%, 100% { opacity: 0.3; transform: scale(0.8) translateZ(0); }
-    50% { opacity: 1; transform: scale(1.2) translateZ(20px); }
-  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8) translateZ(0); }
+    50% { opacity: 1; transform: scale(1.2) translateZ(20px); }
+  }
 
-  .crest {
-    position: absolute;
-    top: clamp(2%, 3vw, 4%);
-    width: clamp(100px, 25vw, 140px);
-    animation: floatCrest 5s ease-in-out infinite;
-    transform-style: preserve-3d;
-    z-index: 1;
-  }
+  .crest {
+    position: absolute;
+    top: clamp(2%, 3vw, 4%);
+    width: clamp(100px, 25vw, 140px);
+    animation: floatCrest 5s ease-in-out infinite;
+    transform-style: preserve-3d;
+    z-index: 1;
+  }
 
-  .crest img {
-    width: 100%;
-    transform: rotateY(0deg);
-    animation: spin 18s linear infinite;
-    filter: drop-shadow(0 0 25px var(--golden-glow)) brightness(1.2);
-    transform-style: preserve-3d;
-  }
+  .crest img {
+    width: 100%;
+    transform: rotateY(0deg);
+    animation: spin 18s linear infinite;
+    filter: drop-shadow(0 0 25px var(--golden-glow)) brightness(1.2);
+    transform-style: preserve-3d;
+  }
 
-  @keyframes floatCrest {
-    0%, 100% { transform: translateY(0px) translateZ(0); }
-    50% { transform: translateY(-20px) translateZ(30px); }
-  }
+  @keyframes floatCrest {
+    0%, 100% { transform: translateY(0px) translateZ(0); }
+    50% { transform: translateY(-20px) translateZ(30px); }
+  }
 
-  @keyframes spin {
-    0% { transform: rotateY(0deg) translateZ(20px); }
-    100% { transform: rotateY(360deg) translateZ(20px); }
-  }
+  @keyframes spin {
+    0% { transform: rotateY(0deg) translateZ(20px); }
+    100% { transform: rotateY(360deg) translateZ(20px); }
+  }
 
-  .login-card {
-    width: clamp(340px, 92vw, 450px);
-    padding: clamp(2rem, 6vw, 2.5rem);
-    border-radius: 20px;
-    background: rgba(30, 25, 10, 0.85);
-    background-image: url('parchment-texture.jpg');
-    background-size: cover;
-    box-shadow: 0 0 40px rgba(212, 175, 55, 0.5), inset 0 0 15px rgba(255, 215, 100, 0.3);
-    border: 3px solid var(--gold);
-    z-index: 2;
-    position: relative;
-    touch-action: pan-y;
-  }
+  .login-card {
+    width: clamp(340px, 92vw, 450px);
+    padding: clamp(2rem, 6vw, 2.5rem);
+    border-radius: 20px;
+    background: rgba(30, 25, 10, 0.85);
+    background-image: url('parchment-texture.jpg');
+    background-size: cover;
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.5), inset 0 0 15px rgba(255, 215, 100, 0.3);
+    border: 3px solid var(--gold);
+    z-index: 2;
+    position: relative;
+    touch-action: pan-y;
+  }
 
-  .login-card h1 {
-    font-family: 'Cinzel Decorative', serif;
-    font-size: clamp(2rem, 6.5vw, 2.5rem);
-    text-align: center;
-    margin-bottom: 1.5rem;
-    color: var(--light-gold);
-    text-shadow: 0 0 15px var(--golden-glow), 0 0 25px var(--golden-glow);
-    letter-spacing: 2px;
-    font-weight: 700;
-  }
+  .login-card h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(2rem, 6.5vw, 2.5rem);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--light-gold);
+    text-shadow: 0 0 15px var(--golden-glow), 0 0 25px var(--golden-glow);
+    letter-spacing: 2px;
+    font-weight: 700;
+  }
 
-  .login-card h2 {
-    font-family: 'Cinzel Decorative', serif;
-    font-size: clamp(1rem, 4vw, 1.125rem);
-    text-align: center;
-    margin-bottom: 2rem;
-    color: var(--light-gold);
-    text-shadow: 0 0 10px var(--golden-glow);
-    font-style: italic;
-  }
+  .login-card h2 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(1rem, 4vw, 1.125rem);
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--light-gold);
+    text-shadow: 0 0 10px var(--golden-glow);
+    font-style: italic;
+  }
 
-  label {
-    font-size: clamp(1rem, 4vw, 1.125rem);
-    color: var(--light-gold);
-    display: block;
-    margin-bottom: 1rem;
-    font-weight: 600;
-  }
+  label {
+    font-size: clamp(1rem, 4vw, 1.125rem);
+    color: var(--light-gold);
+    display: block;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
 
-  input {
-    width: 100%;
-    padding: clamp(0.875rem, 3vw, 1rem);
-    margin-bottom: clamp(1.25rem, 3.5vw, 1.5rem);
-    border-radius: 12px;
-    border: 2px solid var(--gold);
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    font-family: 'EB Garamond', serif;
-    font-size: clamp(1rem, 4vw, 1.125rem);
-    transition: all 0.3s ease;
-    -webkit-appearance: none;
-    line-height: 1.5;
-  }
+  input {
+    width: 100%;
+    padding: clamp(0.875rem, 3vw, 1rem);
+    margin-bottom: clamp(1.25rem, 3.5vw, 1.5rem);
+    border-radius: 12px;
+    border: 2px solid var(--gold);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(1rem, 4vw, 1.125rem);
+    transition: all 0.3s ease;
+    -webkit-appearance: none;
+    line-height: 1.5;
+  }
 
-  input:focus {
-    outline: none;
-    border-color: var(--light-gold);
-    box-shadow: 0 0 15px var(--golden-glow);
-    background: rgba(255, 255, 255, 0.2);
-  }
+  input:focus {
+    outline: none;
+    border-color: var(--light-gold);
+    box-shadow: 0 0 15px var(--golden-glow);
+    background: rgba(255, 255, 255, 0.2);
+  }
 
-  button {
-    width: 100%;
-    padding: clamp(0.875rem, 3vw, 1rem);
-    background: linear-gradient(90deg, var(--gold), var(--light-gold));
-    border: none;
-    border-radius: 12px;
-    color: #000;
-    font-family: 'Cinzel Decorative', serif;
-    font-weight: 700;
-    font-size: clamp(1rem, 4vw, 1.125rem);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    touch-action: none;
-  }
+  button {
+    width: 100%;
+    padding: clamp(0.875rem, 3vw, 1rem);
+    background: linear-gradient(90deg, var(--gold), var(--light-gold));
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: 700;
+    font-size: clamp(1rem, 4vw, 1.125rem);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+  }
 
-  button::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: 0.5s;
-  }
+  button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: 0.5s;
+  }
 
-  button:hover::after, button.tapped::after {
-    left: 100%;
-  }
+  button:hover::after, button.tapped::after {
+    left: 100%;
+  }
 
-  button:hover, button.tapped {
-    transform: scale(1.05);
-    box-shadow: 0 0 25px var(--golden-glow);
-  }
+  button:hover, button.tapped {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px var(--golden-glow);
+  }
 
-  .footer {
-    text-align: center;
-    margin-top: 1.5rem;
-    font-size: clamp(0.875rem, 3.5vw, 1rem);
-    color: #c8b46a;
-    font-style: italic;
-  }
+  .footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: clamp(0.875rem, 3.5vw, 1rem);
+    color: #c8b46a;
+    font-style: italic;
+  }
 
-  .loader-container {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    perspective: 1000px;
-    z-index: 10;
-  }
+  .loader-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    perspective: 1000px;
+    z-index: 10;
+  }
 
-  .loader-orb {
-    width: clamp(40px, 12vw, 60px);
-    height: clamp(40px, 12vw, 60px);
-    background: radial-gradient(circle, var(--light-gold) 10%, var(--gold) 50%, transparent 70%);
-    border-radius: 50%;
-    position: relative;
-    transform-style: preserve-3d;
-    animation: rotate3D 4s linear infinite;
-    box-shadow: 0 0 30px var(--golden-glow), 0 0 60px var(--golden-glow);
-  }
+  .loader-orb {
+    width: clamp(40px, 12vw, 60px);
+    height: clamp(40px, 12vw, 60px);
+    background: radial-gradient(circle, var(--light-gold) 10%, var(--gold) 50%, transparent 70%);
+    border-radius: 50%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: rotate3D 4s linear infinite;
+    box-shadow: 0 0 30px var(--golden-glow), 0 0 60px var(--golden-glow);
+  }
 
-  @keyframes rotate3D {
-    0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
-    50% { transform: rotateX(180deg) rotateY(360deg) rotateZ(90deg); }
-    100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); }
-  }
+  @keyframes rotate3D {
+    0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+    50% { transform: rotateX(180deg) rotateY(360deg) rotateZ(90deg); }
+    100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); }
+  }
 
-  .loader-orb::before,
-  .loader-orb::after {
-    content: '';
-    position: absolute;
-    width: clamp(4px, 1.5vw, 8px);
-    height: clamp(4px, 1.5vw, 8px);
-    background: var(--light-gold);
-    border-radius: 50%;
-    opacity: 0.7;
-    animation: orbit 2s ease-in-out infinite;
-  }
+  .loader-orb::before,
+  .loader-orb::after {
+    content: '';
+    position: absolute;
+    width: clamp(4px, 1.5vw, 8px);
+    height: clamp(4px, 1.5vw, 8px);
+    background: var(--light-gold);
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: orbit 2s ease-in-out infinite;
+  }
 
-  .loader-orb::before {
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    animation-delay: -0.5s;
-  }
+  .loader-orb::before {
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: -0.5s;
+  }
 
-  .loader-orb::after {
-    top: 50%;
-    left: -20px;
-    transform: translateY(-50%);
-    animation-delay: -1s;
-  }
+  .loader-orb::after {
+    top: 50%;
+    left: -20px;
+    transform: translateY(-50%);
+    animation-delay: -1s;
+  }
 
-  @keyframes orbit {
-    0%, 100% { transform: translateX(-50%) scale(0.5) translateZ(0); opacity: 0.3; }
-    50% { transform: translateX(-50%) scale(1.2) translateZ(30px); opacity: 1; }
-  }
+  @keyframes orbit {
+    0%, 100% { transform: translateX(-50%) scale(0.5) translateZ(0); opacity: 0.3; }
+    50% { transform: translateX(-50%) scale(1.2) translateZ(30px); opacity: 1; }
+  }
 
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
 
-  body h1 {
-    font-family: 'Cinzel Decorative', serif;
-    text-align: center;
-    margin-top: clamp(20vh, 40vw, 40vh);
-    color: #ffd45c;
-    font-size: clamp(1.5rem, 7vw, 2.5rem);
-    text-shadow: 0 0 15px var(--golden-glow);
-    line-height: 1.4;
-    padding: 0 1rem;
-  }
+  body h1 {
+    font-family: 'Cinzel Decorative', serif;
+    text-align: center;
+    margin-top: clamp(20vh, 40vw, 40vh);
+    color: #ffd45c;
+    font-size: clamp(1.5rem, 7vw, 2.5rem);
+    text-shadow: 0 0 15px var(--golden-glow);
+    line-height: 1.4;
+    padding: 0 1rem;
+  }
 
-  @media (max-width: 768px) {
-    .crest { 
-      width: clamp(90px, 22vw, 120px); 
-      top: clamp(1%, 2vw, 3%); 
-    }
-    .login-card { 
-      width: clamp(300px, 90vw, 400px); 
-      padding: clamp(1.5rem, 5vw, 2rem); 
-    }
-    .login-card h1 { font-size: clamp(1.75rem, 6vw, 2.25rem); }
-    .login-card h2 { font-size: clamp(0.875rem, 3.5vw, 1rem); }
-    label { font-size: clamp(0.875rem, 3.5vw, 1rem); }
-    input { 
-      padding: clamp(0.75rem, 2.5vw, 0.875rem); 
-      font-size: clamp(0.875rem, 3.5vw, 1rem); 
-    }
-    button { 
-      padding: clamp(0.75rem, 2.5vw, 0.875rem); 
-      font-size: clamp(0.875rem, 3.5vw, 1rem); 
-    }
-    .footer { font-size: clamp(0.75rem, 3vw, 0.875rem); }
-    body h1 { margin-top: clamp(15vh, 35vw, 35vh); font-size: clamp(1.25rem, 6.5vw, 2.25rem); }
-  }
+  @media (max-width: 768px) {
+    .crest { 
+      width: clamp(90px, 22vw, 120px); 
+      top: clamp(1%, 2vw, 3%); 
+    }
+    .login-card { 
+      width: clamp(300px, 90vw, 400px); 
+      padding: clamp(1.5rem, 5vw, 2rem); 
+    }
+    .login-card h1 { font-size: clamp(1.75rem, 6vw, 2.25rem); }
+    .login-card h2 { font-size: clamp(0.875rem, 3.5vw, 1rem); }
+    label { font-size: clamp(0.875rem, 3.5vw, 1rem); }
+    input { 
+      padding: clamp(0.75rem, 2.5vw, 0.875rem); 
+      font-size: clamp(0.875rem, 3.5vw, 1rem); 
+    }
+    button { 
+      padding: clamp(0.75rem, 2.5vw, 0.875rem); 
+      font-size: clamp(0.875rem, 3.5vw, 1rem); 
+    }
+    .footer { font-size: clamp(0.75rem, 3vw, 0.875rem); }
+    body h1 { margin-top: clamp(15vh, 35vw, 35vh); font-size: clamp(1.25rem, 6.5vw, 2.25rem); }
+  }
 
-  @media (max-width: 480px) {
-    .crest { 
-      width: clamp(70px, 18vw, 90px); 
-      top: clamp(0.5%, 1.5vw, 2%); 
-    }
-    .login-card { 
-      width: clamp(280px, 90vw, 360px); 
-      padding: clamp(1.25rem, 4vw, 1.75rem); 
-    }
-    .login-card h1 { font-size: clamp(1.5rem, 5.5vw, 2rem); }
-    .login-card h2 { font-size: clamp(0.75rem, 3vw, 0.875rem); }
-    label { font-size: clamp(0.75rem, 3vw, 0.875rem); }
-    input { 
-      padding: clamp(0.625rem, 2vw, 0.75rem); 
-      font-size: clamp(0.75rem, 3vw, 0.875rem); 
-    }
-    button { 
-      padding: clamp(0.625rem, 2vw, 0.75rem); 
-      font-size: clamp(0.75rem, 3vw, 0.875rem); 
-    }
-    .footer { font-size: clamp(0.625rem, 2.5vw, 0.75rem); }
-    body h1 { margin-top: clamp(10vh, 30vw, 30vh); font-size: clamp(1rem, 6vw, 2rem); }
-  }
+  @media (max-width: 480px) {
+    .crest { 
+      width: clamp(70px, 18vw, 90px); 
+      top: clamp(0.5%, 1.5vw, 2%); 
+    }
+    .login-card { 
+      width: clamp(280px, 90vw, 360px); 
+      padding: clamp(1.25rem, 4vw, 1.75rem); 
+    }
+    .login-card h1 { font-size: clamp(1.5rem, 5.5vw, 2rem); }
+    .login-card h2 { font-size: clamp(0.75rem, 3vw, 0.875rem); }
+    label { font-size: clamp(0.75rem, 3vw, 0.875rem); }
+    input { 
+      padding: clamp(0.625rem, 2vw, 0.75rem); 
+      font-size: clamp(0.75rem, 3vw, 0.875rem); 
+    }
+    button { 
+      padding: clamp(0.625rem, 2vw, 0.75rem); 
+      font-size: clamp(0.75rem, 3vw, 0.875rem); 
+    }
+    .footer { font-size: clamp(0.625rem, 2.5vw, 0.75rem); }
+    body h1 { margin-top: clamp(10vh, 30vw, 30vh); font-size: clamp(1rem, 6vw, 2rem); }
+  }
 
-  @media (max-width: 320px) {
-    .login-card {
-      width: 95vw;
-      padding: 1rem;
-    }
-    .login-card h1 { font-size: clamp(1.25rem, 5vw, 1.75rem); }
-    .login-card h2 { font-size: clamp(0.625rem, 2.5vw, 0.75rem); }
-    label { font-size: clamp(0.625rem, 2.5vw, 0.75rem); }
-    input, button {
-      font-size: clamp(0.625rem, 2.5vw, 0.75rem);
-      padding: clamp(0.5rem, 2vw, 0.625rem);
-    }
-    .footer { font-size: clamp(0.5rem, 2vw, 0.625rem); }
-    body h1 { font-size: clamp(0.875rem, 5.5vw, 1.5rem); margin-top: 20vh; }
-  }
+  @media (max-width: 320px) {
+    .login-card {
+      width: 95vw;
+      padding: 1rem;
+    }
+    .login-card h1 { font-size: clamp(1.25rem, 5vw, 1.75rem); }
+    .login-card h2 { font-size: clamp(0.625rem, 2.5vw, 0.75rem); }
+    label { font-size: clamp(0.625rem, 2.5vw, 0.75rem); }
+    input, button {
+      font-size: clamp(0.625rem, 2.5vw, 0.75rem);
+      padding: clamp(0.5rem, 2vw, 0.625rem);
+    }
+    .footer { font-size: clamp(0.5rem, 2vw, 0.625rem); }
+    body h1 { font-size: clamp(0.875rem, 5.5vw, 1.5rem); margin-top: 20vh; }
+  }
 </style>
 </head>
 <body>
@@ -366,64 +370,119 @@
 <div class="stars" id="stars"></div>
 
 <div class="crest">
-  <img src="crest.png" alt="Hogwarts Crest">
+  <img src="crest.png" alt="Hogwarts Crest">
 </div>
 
 <div class="login-card" id="loginCard">
-  <h1>Mystery Maze Login</h1>
-  <h2>“Unlock the secrets hidden beyond Hogwarts walls...”</h2>
-  <form id="loginForm">
-    <label for="userid">Team Leader Roll No</label>
-    <input type="text" id="userid" name="userid" placeholder="e.g. 23001003132">
+  <h1>Mystery Maze Login</h1>
+  <h2>“Unlock the secrets hidden beyond Hogwarts walls...”</h2>
+  <form id="loginForm">
+    <label for="userid">Team Leader Roll No</label>
+    <input type="text" id="userid" name="userid" placeholder="e.g. 23001003132">
 
-    <label for="teamname">Team Name</label>
-    <input type="text" id="teamname" name="teamname" placeholder="e.g. Team Phoenix">
+    <label for="teamname">Team Name</label>
+    <input type="text" id="teamname" name="teamname" placeholder="e.g. Team Phoenix">
 
-    <label for="password">Leader Phone</label>
-    <input type="password" id="password" name="password" placeholder="10-digit number">
+    <label for="password">Leader Phone</label>
+    <input type="password" id="password" name="password" placeholder="10-digit number">
 
-    <button type="submit" id="loginBtn">Enter the Maze</button>
-  </form>
+    <button type="submit" id="loginBtn">Enter the Maze</button>
+  </form>
 
-  <div class="footer">✨ Only the worthy may pass ✨</div>
+  <div class="footer">✨ Only the worthy may pass ✨</div>
 </div>
 
 <script>
 // Web App URL for your Google Apps Script deployment
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1XADJH1lBrTb9p_Mb7Uxs_yghk25aoJlB1rkr2zW8TIW3U0l3_v8SUG9SysI6lROpIQ/exec";
 
+// ------------------------- 🔥 FIREBASE CONFIGURATION 🔥 -------------------------
+// NOTE: These details must match the config in your 'riddles.html' file
+const firebaseConfig = {
+    apiKey: "AIzaSyBFwnzQG7zpNs7AgJHs8EaCnHIQXXlEq54", 
+    authDomain: "data-5ccfc.firebaseapp.com",
+    projectId: "data-5ccfc",
+    storageBucket: "data-5ccfc.firebasestorage.app",
+    messagingSenderId: "1036192616171",
+    appId: "1:1036192616171:web:8630ee06f3a38df6edb8ae",
+    measurementId: "G-FELNJEHWF1"
+};
+
+// Initialize Firebase and Firestore
+const app = firebase.initializeApp(firebaseConfig);
+const db = app.firestore();
+// ------------------------- END FIREBASE CONFIGURATION -------------------------
+
+
 // Handle Login
-// Corrected handleLogin function
 async function handleLogin(e) {
-  e.preventDefault();
-  const roll = document.getElementById('userid').value.trim();
-  const phone = document.getElementById('password').value.trim();
-  if (!roll || !phone) {
-    alert("Please fill all fields!");
-    return;
-  }
-  document.getElementById('loginBtn').disabled = true;
-  document.getElementById('loginBtn').textContent = "Entering...";
-  try {
-    // Change to GET request with parameters in the URL
-    const url = `${WEB_APP_URL}?path=login&roll=${roll}&phone=${phone}`;
-    const response = await fetch(url, { method: "GET" });
-    const data = await response.json();
-    if (data.success) {
-      alert("✅ Welcome to the Maze!");
-      localStorage.setItem("roll", roll);
-      window.location.href = "riddles.html";
-    } else {
-      alert("❌ " + data.message);
+    e.preventDefault();
+    const roll = document.getElementById('userid').value.trim();
+    const phone = document.getElementById('password').value.trim();
+    
+    if (!roll || !phone) {
+        alert("⚠️ Please fill all fields (Roll No and Phone)!");
+        return;
     }
-  } catch (err) {
-    console.error("Error during login:", err);
-    alert("⚠️ Unable to connect to server. Try again later!");
-  } finally {
-    document.getElementById('loginBtn').disabled = false;
-    document.getElementById('loginBtn').textContent = "Enter the Maze";
-  }
+
+    const loginBtn = document.getElementById('loginBtn');
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Checking Status...";
+    
+    // --- STEP 1: Firebase Status Check (Check for active session) ---
+    const statusRef = db.collection("onlineStatus").doc(roll);
+    
+    try {
+        const statusSnap = await statusRef.get();
+        
+        if (statusSnap.exists && statusSnap.data().isOnline) {
+            // 🚨 LOGIN BLOCKED: User is already active on another device
+            alert("⚠️ This ID is currently active on another device (or previous session was not closed properly). Please log out from the other device or wait a moment before trying again.");
+            
+            // Re-enable button and return
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Enter the Maze";
+            return;
+        }
+
+        // --- STEP 2: GAS Backend Authentication Check ---
+        loginBtn.textContent = "Authenticating...";
+        
+        // This is your original GAS login request
+        const gasUrl = `${WEB_APP_URL}?path=login&roll=${roll}&phone=${phone}`;
+        const gasResponse = await fetch(gasUrl, { method: "GET" });
+        const gasData = await gasResponse.json();
+
+        if (gasData.success) {
+            
+            // --- STEP 3: Set Online Status and Proceed ---
+            
+            // ✅ Set online status in Firebase to lock the session
+            await statusRef.set({ 
+                isOnline: true, 
+                loginTime: firebase.firestore.FieldValue.serverTimestamp(),
+                device: navigator.userAgent.substring(0, 150) // Save device info
+            });
+
+            alert("✅ Welcome to the Maze! Session Activated.");
+            localStorage.setItem("roll", roll);
+            window.location.href = "riddles.html"; // Redirect to game page
+            
+        } else {
+            // ❌ Authentication failed
+            alert("❌ Authentication Failed: " + gasData.message);
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Enter the Maze";
+        }
+        
+    } catch (err) {
+        console.error("Error during login or Firebase check:", err);
+        alert("⚠️ Fatal Error: Unable to connect to Firebase or Server. Please check your network!");
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Enter the Maze";
+    }
 }
+
 // Attach login handler to the form's submit event
 document.getElementById('loginForm').addEventListener('submit', handleLogin);
 </script>
