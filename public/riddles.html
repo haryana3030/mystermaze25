@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <style>
+        /* [ORIGINAL CSS STYLES ARE RETAINED HERE] */
         body {
             background: url('greathall.png') no-repeat center center fixed;
             background-size: cover;
@@ -425,17 +426,14 @@ async function saveGlobalProgress() {
     const progressRef = db.collection("progress").doc(team.id);
 
     try {
-        // Transaction ensures data integrity across multiple devices
         await db.runTransaction(async (transaction) => {
-            // Read is omitted for simplicity in this case, direct set is fine with a basic transaction
+            // Transaction ensures data integrity across multiple devices
             transaction.set(progressRef, userProgress);
         });
         console.log("Progress saved via transaction.");
 
     } catch (error) {
         console.error("Failed to save progress via transaction:", error);
-        // Alert user if sync failed due to network/server issues
-        // We avoid alert() here as it interrupts gameplay too often, relying on the 'beforeunload' listener later.
     }
 }
 
@@ -460,7 +458,7 @@ async function safeLogout() {
 
     // 2. Clear Local Storage and Redirect
     localStorage.removeItem('roll');
-    alert("You have been securely logged out.");
+    alert("You have been securely logged out. You can now log in on another device.");
     window.location.href = 'login.html';
 }
 
@@ -468,8 +466,7 @@ async function safeLogout() {
 window.addEventListener('beforeunload', (e) => {
     const rollNumber = localStorage.getItem('roll');
     if (rollNumber) {
-        // Use sendBeacon for quick, non-blocking asynchronous request before page unloads
-        // However, with Firestore compatibility SDK, a direct set works best for simplicity:
+        // Use an asynchronous call that the browser might process before closing
         db.collection("onlineStatus").doc(rollNumber).set({ isOnline: false });
     }
 });
@@ -485,6 +482,22 @@ async function initGame() {
         return;
     }
     team.id = rollNumber;
+
+    // 🚨 SESSION STATUS CHECK (Added for robustness, though login.html does the main check)
+    try {
+        const statusRef = db.collection("onlineStatus").doc(team.id);
+        const statusSnap = await statusRef.get();
+        if (!statusSnap.exists || !statusSnap.data().isOnline) {
+             alert("Your session was closed on another device or did not start correctly. Please log in again.");
+             localStorage.removeItem('roll');
+             window.location.href = 'login.html';
+             return;
+        }
+    } catch (error) {
+        console.error("Session integrity check failed:", error);
+        // Continue if check fails, relying on manual logout/relogin
+    }
+
 
     getRiddleBtn.classList.add('hidden');
     riddleCard.classList.remove('hidden');
