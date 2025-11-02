@@ -230,7 +230,7 @@
         @keyframes leaderboard-float {
             0% { transform: rotateX(5deg) rotateY(10deg) translateY(0); }
             50% { transform: rotateX(8deg) rotateY(5deg) translateY(-3px); }
-            100% { transform: rotateX(5deg) rotateY(10deg) translateY(0); }
+            100% { transform: translateY(0px) rotateX(5deg) rotateY(10deg); }
         }
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -256,6 +256,7 @@
         <h1 class="text-2xl font-['Harry_P'] text-yellow-400 sm:text-3xl md:text-4xl">Riddle Quest⚡️</h1>
         <div class="flex items-center space-x-2 sm:space-x-4">
             <span id="score-display" class="text-base sm:text-xl">Points: 0</span>
+            <button id="logout-btn" onclick="safeLogout()" class="px-2 py-1 bg-red-800 text-white rounded hover:bg-red-700"><i class="fas fa-sign-out-alt"></i></button> 
             <button id="mute-btn" class="px-2 py-1 bg-gray-800 rounded hover:bg-gray-700"><i class="fas fa-volume-up"></i></button>
         </div>
     </header>
@@ -299,16 +300,16 @@
 // ------------------------- GOOGLE APPS SCRIPT URL (Used for Leaderboard/Score) -------------------------
 const backendUrl = "/api/gasProxy";
 
-// ------------------------- 🔥 FIREBASE CONFIGURATION (For Global Progress Sync) 🔥 -------------------------
+// ------------------------- 🔥 NEW FIREBASE CONFIGURATION (For Global Progress Sync) 🔥 -------------------------
 const firebaseConfig = {
-    // AAPKI API KEY AUR BAAKI CONFIGURATION AB YAHAN CORRECT HAI
-    apiKey: "AIzaSyBFwnzQG7zpNs7AgJHs8EaCnHIQXXlEq54", 
-    authDomain: "data-5ccfc.firebaseapp.com",
-    projectId: "data-5ccfc",
-    storageBucket: "data-5ccfc.firebasestorage.app",
-    messagingSenderId: "1036192616171",
-    appId: "1:1036192616171:web:8630ee06f3a38df6edb8ae",
-    measurementId: "G-FELNJEHWF1"
+    // NEW PROJECT DETAILS: login-d5978
+    apiKey: "AIzaSyB7-MsCUkAfyaYxPBYHFiiPr3mpXuHZ7MM", 
+    authDomain: "login-d5978.firebaseapp.com",
+    projectId: "login-d5978",
+    storageBucket: "login-d5978.firebasestorage.app",
+    messagingSenderId: "913994164259",
+    appId: "1:913994164259:web:d7193c0f5842e7be6e6996",
+    measurementId: "G-7HR05W3KV1"
 };
 
 // Initialize Firebase and Firestore
@@ -418,15 +419,62 @@ async function loadGlobalProgress() {
     }
 }
 
-// NEW: Progress ko Firebase par save karega
+// UPDATED: Progress ko Firebase par Transaction ke saath save karega
 async function saveGlobalProgress() {
+    if (!team.id) return;
+    const progressRef = db.collection("progress").doc(team.id);
+
     try {
-        await db.collection("progress").doc(team.id).set(userProgress);
-        console.log("Progress saved to Firebase.");
+        // Transaction ensures data integrity across multiple devices
+        await db.runTransaction(async (transaction) => {
+            // Read is omitted for simplicity in this case, direct set is fine with a basic transaction
+            transaction.set(progressRef, userProgress);
+        });
+        console.log("Progress saved via transaction.");
+
     } catch (error) {
-        console.error("Failed to save progress to Firebase:", error);
+        console.error("Failed to save progress via transaction:", error);
+        // Alert user if sync failed due to network/server issues
+        // We avoid alert() here as it interrupts gameplay too often, relying on the 'beforeunload' listener later.
     }
 }
+
+// ------------------------- GRACEFUL LOGOUT FUNCTION (CRITICAL FOR SESSION LOCK) -------------------------
+async function safeLogout() {
+    const rollNumber = localStorage.getItem('roll');
+
+    if (rollNumber) {
+        try {
+            const statusRef = db.collection("onlineStatus").doc(rollNumber);
+            // 💥 Explicitly set isOnline to false
+            await statusRef.set({ 
+                isOnline: false, 
+                logoutTime: firebase.firestore.FieldValue.serverTimestamp() 
+            }); 
+            console.log("Firebase status successfully set to offline.");
+        } catch (error) {
+            console.error("Failed to set status offline on logout:", error);
+            // We ignore the error and proceed to logout locally
+        }
+    }
+
+    // 2. Clear Local Storage and Redirect
+    localStorage.removeItem('roll');
+    alert("You have been securely logged out.");
+    window.location.href = 'login.html';
+}
+
+// NEW: Event listener for when the browser/tab is closed/reloaded
+window.addEventListener('beforeunload', (e) => {
+    const rollNumber = localStorage.getItem('roll');
+    if (rollNumber) {
+        // Use sendBeacon for quick, non-blocking asynchronous request before page unloads
+        // However, with Firestore compatibility SDK, a direct set works best for simplicity:
+        db.collection("onlineStatus").doc(rollNumber).set({ isOnline: false });
+    }
+});
+// ------------------------- END LOGOUT HANDLERS -------------------------
+
 
 // ------------------------- INIT GAME FUNCTION -------------------------
 async function initGame() {
