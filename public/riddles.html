@@ -7,6 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Harry+P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <style>
         body {
             background: url('greathall.png') no-repeat center center fixed;
@@ -294,9 +296,26 @@
     <audio id="wrong-sound" src="https://www.soundjay.com/buttons/button-10.mp3"></audio>
 
 <script>
-// ------------------------- GOOGLE APPS SCRIPT URL -------------------------
-// !!! IMPORTANT: Replace this with your actual deployed Apps Script URL !!!
+// ------------------------- GOOGLE APPS SCRIPT URL (Used for Leaderboard/Score) -------------------------
 const backendUrl = "/api/gasProxy";
+
+// ------------------------- 🔥 FIREBASE CONFIGURATION (For Global Progress Sync) 🔥 -------------------------
+const firebaseConfig = {
+    // AAPKI API KEY AUR BAAKI CONFIGURATION AB YAHAN CORRECT HAI
+    apiKey: "AIzaSyBFwnzQG7zpNs7AgJHs8EaCnHIQXXlEq54", 
+    authDomain: "data-5ccfc.firebaseapp.com",
+    projectId: "data-5ccfc",
+    storageBucket: "data-5ccfc.firebasestorage.app",
+    messagingSenderId: "1036192616171",
+    appId: "1:1036192616171:web:8630ee06f3a38df6edb8ae",
+    measurementId: "G-FELNJEHWF1"
+};
+
+// Initialize Firebase and Firestore
+const app = firebase.initializeApp(firebaseConfig);
+const db = app.firestore(); // 'db' variable ab Firestore database ko point karega
+// ------------------------- END FIREBASE CONFIGURATION -------------------------
+
 let team = {
     id: null,
     name: "Gryffindor",
@@ -378,6 +397,37 @@ sidebarToggle.addEventListener('click', () => {
     sidebarToggle.innerHTML = sidebar.classList.contains('open') ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
 });
 
+// ------------------------- 🔥 FIREBASE GLOBAL PROGRESS FUNCTIONS 🔥 -------------------------
+
+// NEW: Progress ko Firebase se load karega
+async function loadGlobalProgress() {
+    try {
+        const docRef = db.collection("progress").doc(team.id); 
+        const docSnap = await docRef.get();
+
+        if (docSnap.exists) {
+            console.log("Progress loaded from Firebase.");
+            return docSnap.data(); 
+        } else {
+            console.log("No progress found in Firebase for this user.");
+            return null;
+        }
+    } catch (error) {
+        console.error("Failed to load progress from Firebase:", error);
+        return null;
+    }
+}
+
+// NEW: Progress ko Firebase par save karega
+async function saveGlobalProgress() {
+    try {
+        await db.collection("progress").doc(team.id).set(userProgress);
+        console.log("Progress saved to Firebase.");
+    } catch (error) {
+        console.error("Failed to save progress to Firebase:", error);
+    }
+}
+
 // ------------------------- INIT GAME FUNCTION -------------------------
 async function initGame() {
     const rollNumber = getUserId();
@@ -399,26 +449,27 @@ async function initGame() {
         if (riddlesData.success && riddlesData.questions && riddlesData.questions.length > 0) {
             allRiddles = riddlesData.questions;
             
-            const localProgress = localStorage.getItem(`progress_${team.id}`);
-            if (localProgress) {
-                userProgress = JSON.parse(localProgress);
+            // 🔄 Load progress from Firebase
+            const globalProgress = await loadGlobalProgress(); 
+            
+            if (globalProgress) {
+                userProgress = globalProgress;
                 teamRiddles = userProgress.riddleOrder;
                 currentRiddleIndex = userProgress.currentRiddleIndex;
             } else {
-                // 1. Shuffle all riddles from the backend using the user's ID as seed
+                // Agar global progress nahi mila, toh naya progress generate karo aur save karo
                 let shuffledRiddles = shuffleArray([...allRiddles], team.id);
                 
-                // 2. ⭐ MODIFICATION: Select only the first 10 riddles for the quest
                 const QUEST_SIZE = 10;
                 teamRiddles = shuffledRiddles.slice(0, QUEST_SIZE);
                 
                 userProgress = {
-                    riddleOrder: teamRiddles, // Save the fixed 10 riddles
+                    riddleOrder: teamRiddles, 
                     solvedRiddles: {},
                     partialRiddles: {},
                     currentRiddleIndex: 0
                 };
-                saveLocalProgress();
+                await saveGlobalProgress(); // Naya progress globally Firebase par save karo
             }
 
             progressMap.innerHTML = '';
@@ -468,7 +519,7 @@ function startTimer() {
 
 // ------------------------- LOAD RIDDLE -------------------------
 function loadRiddle() {
-    saveLocalProgress();
+    saveGlobalProgress(); // Progress ko Firebase par update karo
 
     if (currentRiddleIndex >= teamRiddles.length) { // Checks against the 10-riddle limit
         showFinalLeaderboard();
@@ -531,6 +582,7 @@ submitBtn.addEventListener('click', async () => {
 
     const currentRiddle = teamRiddles[currentRiddleIndex];
     try {
+        // NOTE: Yeh checkAnswer call abhi bhi aapke GAS proxy par jaa rahi hai
         const res = await fetch(`${backendUrl}?path=checkAnswer&qid=${currentRiddle.qid}&answer=${userAnswer}`);
         const data = await res.json();
         
@@ -544,11 +596,10 @@ submitBtn.addEventListener('click', async () => {
             }
             userProgress.solvedRiddles[currentRiddle.qid] = { attempts: attemptsUsed, score: points };
             userProgress.currentRiddleIndex = currentRiddleIndex + 1;
-            saveLocalProgress();
+            await saveGlobalProgress(); // Progress Firebase par save hua!
 
-            // Key change: Send the riddle ID and points, not the total score
+            // Points ko leaderboard aur score update ke liye GAS backend par bhejte hain
             await saveRiddlePointsToBackend(currentRiddle.qid, points);
-            // Update the display after the backend has been notified
             await updateScoreDisplay();
 
             const randomPraise = praises[Math.floor(Math.random() * praises.length)];
@@ -568,7 +619,7 @@ submitBtn.addEventListener('click', async () => {
             if (attemptsLeft > 0) {
                 if (!userProgress.partialRiddles) userProgress.partialRiddles = {};
                 userProgress.partialRiddles[currentRiddle.qid] = { attemptsUsed: attemptsUsed };
-                saveLocalProgress();
+                await saveGlobalProgress(); // Progress Firebase par save hua!
 
                 backText.textContent = `Incorrect! Try again.`;
                 cardInner.style.transform = 'rotateY(180deg)';
@@ -587,7 +638,7 @@ submitBtn.addEventListener('click', async () => {
                     delete userProgress.partialRiddles[currentRiddle.qid];
                 }
                 userProgress.currentRiddleIndex = currentRiddleIndex + 1;
-                saveLocalProgress();
+                await saveGlobalProgress(); // Progress Firebase par save hua!
 
                 setTimeout(() => {
                     cardInner.style.transform = 'rotateY(0deg)';
@@ -603,7 +654,7 @@ submitBtn.addEventListener('click', async () => {
     }
 });
 
-// NEW FUNCTION: Send riddle-specific points to the backend
+// NEW FUNCTION: Send riddle-specific points to the backend (GAS)
 async function saveRiddlePointsToBackend(qid, points) {
     try {
         await fetch(`${backendUrl}?path=addPoints`, {
@@ -613,15 +664,10 @@ async function saveRiddlePointsToBackend(qid, points) {
             },
             body: JSON.stringify({ rollNumber: team.id, qid, points }),
         });
-        console.log(`Points for Riddle ${qid} successfully sent to backend.`);
+        console.log(`Points for Riddle ${qid} successfully sent to backend (GAS).`);
     } catch (error) {
-        console.error("Failed to send riddle points to backend:", error);
+        console.error("Failed to send riddle points to backend (GAS):", error);
     }
-}
-
-// ------------------------- SAVE LOCAL PROGRESS -------------------------
-function saveLocalProgress() {
-    localStorage.setItem(`progress_${team.id}`, JSON.stringify(userProgress));
 }
 
 // ------------------------- UPDATE SCORE DISPLAY (Fetch from backend) -------------------------
@@ -686,7 +732,6 @@ function showFinalLeaderboard() {
     teamStats.classList.remove('hidden');
     statsList.innerHTML = Object.keys(userProgress.solvedRiddles).map(qid => {
         const riddle = userProgress.solvedRiddles[qid];
-        // Find the original question text for display (optional, based on your full data structure)
         const originalRiddle = allRiddles.find(r => r.qid === qid); 
         const riddleName = originalRiddle ? `Riddle ${qid}` : `Riddle ${qid}`;
 
