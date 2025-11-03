@@ -490,7 +490,7 @@ async function updateScoreDisplayFirebase() {
             scoreDisplay.textContent = `Points: ${team.score}`;
             team.name = docSnap.data().name || team.id; 
         } else {
-             // यदि रोल नंबर टीमस्कोर में नहीं है, तो नया डॉक्यूमेंट बनाएँ
+             // यदि रोल नंबर टीमस्कोर में नहीं है, तो नया डॉक्यूमेंट बनाएँ (हालांकि login.html को यह करना चाहिए)
              await teamRef.set({ name: team.id, score: 0 });
              team.score = 0;
              scoreDisplay.textContent = `Points: 0`;
@@ -508,6 +508,7 @@ function setupRealtimeLeaderboard() {
       .onSnapshot((querySnapshot) => {
         const data = [];
         querySnapshot.forEach((doc) => {
+            // लीडरबोर्ड में teamScores से नाम और स्कोर दिखाता है
             data.push({ name: doc.data().name, score: doc.data().score });
         });
         
@@ -520,8 +521,6 @@ function setupRealtimeLeaderboard() {
         `).join('');
     });
 }
-
-// OLD GAS POLING REMOVED: setInterval(updateLeaderboard, 5000);
 
 // NEW: Firebase से सभी रिडल्स लोड करने का फंक्शन
 async function fetchAllRiddlesFromFirebase() {
@@ -564,7 +563,7 @@ async function initGame() {
     progressMap.classList.remove('hidden');
 
     try {
-        // 🔄 Firebase से सीधे 47 रिडल्स प्राप्त करें (GAS call replaced)
+        // 🔄 Firebase से सीधे सभी रिडल्स प्राप्त करें
         allRiddles = await fetchAllRiddlesFromFirebase();
         
         if (allRiddles && allRiddles.length > 0) {
@@ -580,8 +579,8 @@ async function initGame() {
                 // Agar global progress nahi mila, toh naya progress generate karo aur save karo
                 let shuffledRiddles = shuffleArray([...allRiddles], team.id);
                 
-                // NOTE: अगर आप चाहते हैं कि सभी 47 रिडल्स हों, तो QUEST_SIZE को teamRiddles.length पर सेट करें
-                const QUEST_SIZE = 47; 
+                // ⭐ QUEST_SIZE: 10 रिडल्स पर फिक्स किया गया
+                const QUEST_SIZE = 10; 
                 teamRiddles = shuffledRiddles.slice(0, QUEST_SIZE);
                 
                 userProgress = {
@@ -594,7 +593,7 @@ async function initGame() {
             }
 
             progressMap.innerHTML = '';
-            // Ensure progress map reflects the size of the quest
+            // Ensure progress map reflects the size of the 10-riddle quest
             teamRiddles.forEach((riddle, index) => { 
                 const span = document.createElement('i');
                 span.classList.add('fas', 'fa-circle', 'progress-icon', 'opacity-70');
@@ -644,7 +643,7 @@ function startTimer() {
 function loadRiddle() {
     saveGlobalProgress(); // Progress ko Firebase par update karo
 
-    if (currentRiddleIndex >= teamRiddles.length) { // Checks against the total quest size
+    if (currentRiddleIndex >= teamRiddles.length) { // Checks against the 10-riddle limit
         showFinalLeaderboard();
         return;
     }
@@ -705,7 +704,7 @@ submitBtn.addEventListener('click', async () => {
 
     const currentRiddle = teamRiddles[currentRiddleIndex];
     try {
-        // 🚀 नया: Firebase से सही उत्तर प्राप्त करें (GAS check replaced)
+        // 🚀 नया: Firebase से सही उत्तर प्राप्त करें
         const answerSnap = await db.collection("riddles").doc(currentRiddle.qid).get();
         const correctAnswer = answerSnap.exists ? answerSnap.data().answer.toUpperCase() : null; 
 
@@ -722,7 +721,7 @@ submitBtn.addEventListener('click', async () => {
             userProgress.currentRiddleIndex = currentRiddleIndex + 1;
             await saveGlobalProgress(); // Progress Firebase par save hua!
 
-            // 🌟 नया: स्कोर सीधे Firestore में अपडेट करें (GAS call replaced)
+            // 🌟 नया: स्कोर सीधे Firestore में अपडेट करें
             await updateScoreInFirebase(points); 
             await updateScoreDisplayFirebase(); // Score refresh
 
@@ -777,8 +776,6 @@ submitBtn.addEventListener('click', async () => {
         submitBtn.disabled = false;
     }
 });
-
-// OLD GAS Functions REMOVED: saveRiddlePointsToBackend, updateScoreDisplay, updateLeaderboard
 
 // ------------------------- FINAL LEADERBOARD -------------------------
 function showFinalLeaderboard() {
