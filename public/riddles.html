@@ -549,13 +549,14 @@ async function initGame() {
     //     const statusSnap = await statusRef.get();
     //     if (!statusSnap.exists || !statusSnap.data().isOnline) {
     //          alert("Your session was closed on another device or did not start correctly. Please log in again.");
-    //          localStorage.removeItem('roll');
+    //          
     //          window.location.href = 'login.html';
     //          return;
     //     }
     // } catch (error) {
     //     console.error("Session integrity check failed:", error);
     // }
+    localStorage.removeItem('roll');
 
 
     getRiddleBtn.classList.add('hidden');
