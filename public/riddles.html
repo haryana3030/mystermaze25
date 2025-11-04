@@ -500,29 +500,29 @@ async function updateScoreDisplayFirebase() {
     }
 }
 
-// NEW: 3. Real-time Leaderboard सेटअप करें
-// function setupRealtimeLeaderboard() {
-//     // onSnapshot का उपयोग करते हुए, डेटा में बदलाव होते ही लीडरबोर्ड अपडेट होगा
-//     db.collection("teamScores")
-//       .orderBy("score", "desc") // स्कोर के अनुसार क्रमबद्ध करें
-//       .onSnapshot((querySnapshot) => {
-//         const data = [];
-//         querySnapshot.forEach((doc) => {
-//             // लीडरबोर्ड में teamScores से नाम और स्कोर दिखाता है
-//             data.push({ name: doc.data().name, score: doc.data().score });
-//         });
+NEW: 3. Real-time Leaderboard सेटअप करें
+function setupRealtimeLeaderboard() {
+    // onSnapshot का उपयोग करते हुए, डेटा में बदलाव होते ही लीडरबोर्ड अपडेट होगा
+    db.collection("teamScores")
+      .orderBy("score", "desc") // स्कोर के अनुसार क्रमबद्ध करें
+      .onSnapshot((querySnapshot) => {
+        const data = [];
+        querySnapshot.forEach((doc) => {
+            // लीडरबोर्ड में teamScores से नाम और स्कोर दिखाता है
+            data.push({ name: doc.data().name, score: doc.data().score });
+        });
         
-//         // Leaderboard List को अपडेट करें
-//         leaderboardList.innerHTML = data.map((t, index) => `
-//             <li class="leaderboard-item flex justify-between p-2 rounded bg-gray-900 border border-gray-700">
-//                 <span><i class="fas fa-trophy mr-1 ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : 'text-orange-600'}"></i>${t.name}</span>
-//                 <span>${t.score} pts</span>
-//             </li>
-//         `).join('');
-//     });
-// }
+        // Leaderboard List को अपडेट करें
+        leaderboardList.innerHTML = data.map((t, index) => `
+            <li class="leaderboard-item flex justify-between p-2 rounded bg-gray-900 border border-gray-700">
+                <span><i class="fas fa-trophy mr-1 ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : 'text-orange-600'}"></i>${t.name}</span>
+                <span>${t.score} pts</span>
+            </li>
+        `).join('');
+    });
+}
 
-// NEW: Firebase से सभी रिडल्स लोड करने का फंक्शन
+NEW: Firebase से सभी रिडल्स लोड करने का फंक्शन
 async function fetchAllRiddlesFromFirebase() {
     const riddlesSnapshot = await db.collection("riddles").get();
     const riddles = [];
