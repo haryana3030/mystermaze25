@@ -544,18 +544,18 @@ async function initGame() {
     team.id = rollNumber;
 
     // 🚨 SESSION STATUS CHECK (वही रहेगा)
-    try {
-        const statusRef = db.collection("onlineStatus").doc(team.id);
-        const statusSnap = await statusRef.get();
-        if (!statusSnap.exists || !statusSnap.data().isOnline) {
-             alert("Your session was closed on another device or did not start correctly. Please log in again.");
-             localStorage.removeItem('roll');
-             window.location.href = 'login.html';
-             return;
-        }
-    } catch (error) {
-        console.error("Session integrity check failed:", error);
-    }
+    // try {
+    //     const statusRef = db.collection("onlineStatus").doc(team.id);
+    //     const statusSnap = await statusRef.get();
+    //     if (!statusSnap.exists || !statusSnap.data().isOnline) {
+    //          alert("Your session was closed on another device or did not start correctly. Please log in again.");
+    //          localStorage.removeItem('roll');
+    //          window.location.href = 'login.html';
+    //          return;
+    //     }
+    // } catch (error) {
+    //     console.error("Session integrity check failed:", error);
+    // }
 
 
     getRiddleBtn.classList.add('hidden');
