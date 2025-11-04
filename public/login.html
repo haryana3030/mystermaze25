@@ -39,6 +39,7 @@
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
+    /* NOTE: 'hogwarts.png' is an assumed local asset */
     background: url('hogwarts.png') center/cover no-repeat;
     opacity: 0.4;
     z-index: -3;
@@ -116,6 +117,7 @@
     padding: clamp(2rem, 6vw, 2.5rem);
     border-radius: 20px;
     background: rgba(30, 25, 10, 0.85);
+    /* NOTE: 'parchment-texture.jpg' is an assumed local asset */
     background-image: url('parchment-texture.jpg');
     background-size: cover;
     box-shadow: 0 0 40px rgba(212, 175, 55, 0.5), inset 0 0 15px rgba(255, 215, 100, 0.3);
@@ -396,8 +398,7 @@
 // Web App URL for your Google Apps Script deployment
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1XADJH1lBrTb9p_Mb7Uxs_yghk25aoJlB1rkr2zW8TIW3U0l3_v8SUG9SysI6lROpIQ/exec";
 
-// ------------------------- 🔥 FIREBASE CONFIGURATION (UPDATED TO MYSTERY MAZE) 🔥 -------------------------
-// NOTE: This now uses the configuration from your new project (mystery-maze-66d38)
+// ------------------------- 🔥 FIREBASE CONFIGURATION (MYSTERY MAZE) 🔥 -------------------------
 const firebaseConfig = {
     apiKey: "AIzaSyCcrlrS6mntArhEmMfOYCj4cIiDuAIiA7o", 
     authDomain: "mystery-maze-66d38.firebaseapp.com",
@@ -418,10 +419,10 @@ const db = app.firestore();
 async function handleLogin(e) {
     e.preventDefault();
     const roll = document.getElementById('userid').value.trim();
-    const teamName = document.getElementById('teamname').value.trim(); // NEW: Fetch team name
+    const teamName = document.getElementById('teamname').value.trim();
     const phone = document.getElementById('password').value.trim();
     
-    if (!roll || !phone || !teamName) { // Check teamName too
+    if (!roll || !phone || !teamName) {
         alert("⚠️ Please fill all fields (Roll No, Team Name, and Phone)!");
         return;
     }
@@ -445,48 +446,27 @@ async function handleLogin(e) {
             return;
         }
 
-        // --- STEP 2: SINGLE SESSION LOCK CHECK (Firebase) ---
-        // Authentication successful, now check if an active session exists in the NEW project.
-        // loginBtn.textContent = "Checking Session Lock...";
-        
-        // const statusRef = db.collection("onlineStatus").doc(roll);
-        // const statusSnap = await statusRef.get();
-        
-        // if (statusSnap.exists && statusSnap.data().isOnline) {
-        //     // 🚨 LOGIN BLOCKED: User is already active in the new project's Firestore
-        //     alert("⚠️ This ID is currently active on another device. Please log out from the other device.");
-            
-        //     // Re-enable button and return
-        //     loginBtn.disabled = false;
-        //     loginBtn.textContent = "Enter the Maze";
-        //     return;
-        // }
+        // --- SESSION LOCK CHECK REMOVED AS REQUESTED ---
+        
+        // --- STEP 2 (Now): SUCCESS, INITIALIZE SCORE (Firebase) ---
+        // 🌟 Initialize team score if it doesn't exist (CRITICAL for leaderboard)
+        const scoreRef = db.collection("teamScores").doc(roll);
+        const scoreSnap = await scoreRef.get();
 
-        // --- STEP 3: SUCCESS, SET ONLINE STATUS & INITIALIZE SCORE ---
-         
-        // ✅ 1. Set online status in Firebase to lock the session
-        // await statusRef.set({ 
-        //     isOnline: true, 
-        //     loginTime: firebase.firestore.FieldValue.serverTimestamp(),
-        //     device: navigator.userAgent.substring(0, 150) 
-        // });
-        
-        // 🌟 2. Initialize team score if it doesn't exist (CRITICAL for leaderboard)
-        const scoreRef = db.collection("teamScores").doc(roll);
-        const scoreSnap = await scoreRef.get();
-
-        if (!scoreSnap.exists) {
-            await scoreRef.set({
-                name: teamName,
-                score: 0,
-                roll: roll // For completeness
-            });
-        }
-        
+        if (!scoreSnap.exists) {
+            await scoreRef.set({
+                name: teamName,
+                score: 0,
+                roll: roll // For completeness
+            });
+        }
+        
         alert("✅ Welcome to the Maze!!!");
+        // Save roll number for use on the game page
         localStorage.setItem("roll", roll);
-        window.location.href = "riddles.html"; // Redirect to game page
-         
+        // Redirect to the game page
+        window.location.href = "riddles.html";
+        
     } catch (err) {
         console.error("Error during server communication:", err);
         // This error handles network issues that prevent contact with GAS OR Firebase
