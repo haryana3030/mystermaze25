@@ -447,29 +447,29 @@ async function handleLogin(e) {
 
         // --- STEP 2: SINGLE SESSION LOCK CHECK (Firebase) ---
         // Authentication successful, now check if an active session exists in the NEW project.
-        loginBtn.textContent = "Checking Session Lock...";
+        // loginBtn.textContent = "Checking Session Lock...";
         
-        const statusRef = db.collection("onlineStatus").doc(roll);
-        const statusSnap = await statusRef.get();
+        // const statusRef = db.collection("onlineStatus").doc(roll);
+        // const statusSnap = await statusRef.get();
         
-        if (statusSnap.exists && statusSnap.data().isOnline) {
-            // 🚨 LOGIN BLOCKED: User is already active in the new project's Firestore
-            alert("⚠️ This ID is currently active on another device. Please log out from the other device.");
+        // if (statusSnap.exists && statusSnap.data().isOnline) {
+        //     // 🚨 LOGIN BLOCKED: User is already active in the new project's Firestore
+        //     alert("⚠️ This ID is currently active on another device. Please log out from the other device.");
             
-            // Re-enable button and return
-            loginBtn.disabled = false;
-            loginBtn.textContent = "Enter the Maze";
-            return;
-        }
+        //     // Re-enable button and return
+        //     loginBtn.disabled = false;
+        //     loginBtn.textContent = "Enter the Maze";
+        //     return;
+        // }
 
         // --- STEP 3: SUCCESS, SET ONLINE STATUS & INITIALIZE SCORE ---
          
         // ✅ 1. Set online status in Firebase to lock the session
-        await statusRef.set({ 
-            isOnline: true, 
-            loginTime: firebase.firestore.FieldValue.serverTimestamp(),
-            device: navigator.userAgent.substring(0, 150) 
-        });
+        // await statusRef.set({ 
+        //     isOnline: true, 
+        //     loginTime: firebase.firestore.FieldValue.serverTimestamp(),
+        //     device: navigator.userAgent.substring(0, 150) 
+        // });
         
         // 🌟 2. Initialize team score if it doesn't exist (CRITICAL for leaderboard)
         const scoreRef = db.collection("teamScores").doc(roll);
